@@ -4,6 +4,7 @@ author: "MZ"
 date: "February 15, 2017"
 output:
   html_document: default
+  pdf_document: default
   word_document: default
 ---
 
@@ -16,13 +17,13 @@ Data from accelerometers located on belt, forearm, arm, and dumbell of 6 partici
 
 
 ## Background
-Using devices such as Jawbone Up, Nike FuelBand, and Fitbit allows to collect a large amount of data about personal activity relatively inexpensively. These types of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it (Ugulino et al, 2012). In this project, data from accelerometers located on the belt, forearm, arm, and dumbell of 6 participants is used to create a machine learning algorithm to predict workout efficiency. The algorithm is validated using the second data set. Prediction is tested in the course quiz
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit allows to collect a large amount of data about personal activity relatively inexpensively. These types of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it (Ugulino et al, 2012). In this project, data from accelerometers located on the belt, forearm, arm, and dumbell of 6 participants is used to create a machine learning algorithm to predict workout efficiency. The algorithm is validated using the second data set. Prediction was tested in the course quiz with 100% accuracy.
 
 ## Analysis
 The analysis was completed in 3 steps.
 
 1. Preparing Data for Analysis.<br>
-First the data was downloaded from the Coursera site into into R. Data was then sufficiently cleaned (e.g. missing data converted to NA). Non-essential data (such as meta data of the participant, time of workout) was removed from consideration. Finally the data set was partitioned into a training and validation data set.
+The data was downloaded from the Coursera-Practical Machine Learning website into into R. Data was then sufficiently cleaned (e.g. missing data converted to NA). Non-essential data (such as meta data of the participant, time of workout) was removed from consideration. Finally the data set was partitioned into a training and validation data set.
 
 2. Developing Algorithm.<br>
 First step was to determine the model that would provide the highest accuracy. Three models were compared
@@ -33,12 +34,12 @@ Code and model summary can be found in the appendix. In summary, random forests 
 Developing the prediction model using training data and the random forest method indicated high accuracy. this was confirmed using the prediction function on the training set.
 The same process was then used on the validation and complete trainig set. 
 
-
 3. Validating algorithm. 
-Final step was to use the algorithm 
+Final step was to apply the model to the training data set to predict 20 outcomes correctly. The matrix is shown below and was validated by entering the data into the final quiz on the Coursera website.
 
 ## Getting & Cleaning Data
 
+Standard set of packages were loaded including package caret, used for the analysis. Most libraries are loaded as a default and may not be used for this project.
 ```{loading libraries, message = FALSE, warning = FALSE}
 library(ggplot2)
 library(dplyr)
@@ -54,8 +55,8 @@ library(gbm)
 library(e1071)
 library(DT)
 ```
-<br><br>
-
+<br>
+Data were downloaded from the Coursera-Practical Machine Learning course and read into data frames. Cursory review identified many NA / blank values. Hence all missing data were converted into NA's
 ```{loading data, message = FALSE, warning = FALSE}
 myDir <- "~/Z_R/8) Practical Machine Learning/Class Project/"
 setwd(myDir)
@@ -73,8 +74,10 @@ Number.Columns.testing<- ncol(testing)
 
 ## identical(train, testing) ## checking if data sets are differnt or not
 ```
-<br><br>
+<br>
+Review of data revealed that several data columns consisted of mostly NA values. These columns were removed from the data frames.
 
+Non-essential data, such as participant data, time readings, were removed as well
 ```{cleaning partitioning data, message = FALSE, warning = FALSE}
 
 ## Cleaning the trainig set, removing columns with N/A's
@@ -91,7 +94,8 @@ inTrain <- createDataPartition(y=train.clean$classe, p=0.7, list=F)
 train.clean.subset <- train.clean[inTrain, ]
 validation.clean.subset <- train.clean[-inTrain, ]
 ```
-<br><br>
+<br>
+As the appendix will show, random forests seems to be the best method for the analysis. Using the claret package for the analysis, all remaining data were included in the data model, with the dependent variable 'classe' being a factor variable.
 
 ```{fitting on train data, results = "hide", message=FALSE, warning = FALSE}
 
@@ -119,22 +123,22 @@ fit.train.subset
 ##E    0    0    0    6 2519 0.002376238
 
 ```
-<br><br> 
+<br>
+The model then was used for prediction, using the validation portion of the train data.
 
 ```{predicting train, results = "hide", message=FALSE, warning = FALSE}
 predict.validations <- predict(fit, newdata=validation.clean.subset)
 predict.training<- confusionMatrix(validation.clean.subset$classe, predict.validations)
 predict.training$overall
 ```
-
-<br><br> 
-
+<br>
+As expected, model accuracy was high.
 ```{output train prediction, results = "hide", message=FALSE, warning = FALSE}
 #     Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull AccuracyPValue 
 #     0.9884452      0.9853801      0.9853742      0.9910164      0.2864911      0.0000000
 ```
-
-Fitting data on full data set
+<br>
+For information purposes only the same methodoly was applied to the entire data set. This might be unusual, however was a useful step in practicing the methodology. Findings were, no surprise, confirmed.
 ```{fitting full train , results = "hide", message=FALSE, warning = FALSE}
 fitControl <- trainControl(method="cv", number=3, verboseIter=F)
 fit <- train(classe ~ ., data=train.clean, method="rf", trControl=fitControl)
@@ -159,7 +163,7 @@ fit.train.full
 #D    0    0   23 3190    3 0.0080845771
 #E    0    1    4    5 3597 0.0027723870
 ```
-<br><br> 
+<br> 
 
 ```{predicting full, results = "hide", message=FALSE, warning = FALSE}
 ## predicting model using full training data set
@@ -172,20 +176,18 @@ predict.training.all$overall
 #      Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull #AccuracyPValue 
 #     0.9884452      0.9853801      0.9853742      0.9910164      0.2864911      #0.0000000 
 ```
-<br><br> 
+<br>
 
-Predicting Quiz
+To test our model, we applied it to the testing data set (20 observations with 54 variables). The results were printed below, entered into the project quiz, and 100% validated.
 ```{predicting quiz, results = "hide", message=FALSE, warning = FALSE}
 class.project.prediction <- predict(fit, newdata=testing.clean)
-prediction.results <- data.frame(problem_id=testing.clean$problem_id,
-      predicted=class.project.prediction)
+prediction.results <- data.frame(question=testing.clean$problem_id,
+      prediction=class.project.prediction)
 print(prediction.results)
 ```
 
-
-
 ```{output predicting quiz, results = "hide", message=FALSE, warning = FALSE}
-#    problem_id predicted
+#      question  prediction
 # 1           1         B
 # 2           2         A
 # 3           3         B
@@ -207,7 +209,7 @@ print(prediction.results)
 # 19         19         B
 # 20         20         B
 ```
-<br><br> 
+This concludes the project report.On a side node, I did experience difficulties with knitr as the train function was running for about 3-4 minutes on my Dell laptop with Core i5 processor.
 
 
 ## Appendix
