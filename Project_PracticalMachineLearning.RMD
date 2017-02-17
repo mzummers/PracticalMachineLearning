@@ -1,0 +1,310 @@
+---
+title: "Practical Machine Learning - Class Project"
+author: "MZ"
+date: "February 15, 2017"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Executive Summary
+Data from accelerometers located on belt, forearm, arm, and dumbell of 6 participants is used to create a machine learning algorithm to predict workout efficiency. The random forest method was selected as the best of 3 modeling methods. The algorithm is validated using the validation data set. Prediction is tested in the course quiz correctly (all 20 questions were answered correctly).
+
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit allows to collect a large amount of data about personal activity relatively inexpensively. These types of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it (Ugulino et al, 2012). In this project, data from accelerometers located on the belt, forearm, arm, and dumbell of 6 participants is used to create a machine learning algorithm to predict workout efficiency. The algorithm is validated using the second data set. Prediction is tested in the course quiz
+
+## Analysis
+The analysis was completed in 3 steps.
+
+1. Preparing Data for Analysis.<br>
+First the data was downloaded from the Coursera site into into R. Data was then sufficiently cleaned (e.g. missing data converted to NA). Non-essential data (such as meta data of the participant, time of workout) was removed from consideration. Finally the data set was partitioned into a training and validation data set.
+
+2. Developing Algorithm.<br>
+First step was to determine the model that would provide the highest accuracy. Three models were compared
+CART model
+Stochastic Gradient Boosting
+Random Forests
+Code and model summary can be found in the appendix. In summary, random forests was selected as it indicated hightest accuracy.
+Developing the prediction model using training data and the random forest method indicated high accuracy. this was confirmed using the prediction function on the training set.
+The same process was then used on the validation and complete trainig set. 
+
+
+3. Validating algorithm. 
+Final step was to use the algorithm 
+
+## Getting & Cleaning Data
+
+```{loading libraries, message = FALSE, warning = FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(AppliedPredictiveModeling)
+library(lattice)
+library(caret)
+library (Hmisc) ## required for cut2 function
+library(rpart)
+library(rattle)
+library(randomForest)
+library(gbm)
+library(e1071)
+library(DT)
+```
+<br><br>
+
+```{loading data, message = FALSE, warning = FALSE}
+myDir <- "~/Z_R/8) Practical Machine Learning/Class Project/"
+setwd(myDir)
+## getwd()
+## list.files()
+
+## Reading data sets. Note: any non-numeric value will be set to NA
+train<-  read.csv("pml-training.csv", sep=",", header=TRUE, na.strings = c("NA","",'#DIV/0!'))
+Number.Rows.train<- nrow(train)
+Number.Columns.train<- ncol(train)
+
+testing<-  read.csv("pml-testing.csv", sep=",", header=TRUE, na.strings = c("NA","",'#DIV/0!'))
+Number.Rows.testing<- nrow(testing)
+Number.Columns.testing<- ncol(testing)
+
+## identical(train, testing) ## checking if data sets are differnt or not
+```
+<br><br>
+
+```{cleaning partitioning data, message = FALSE, warning = FALSE}
+
+## Cleaning the trainig set, removing columns with N/A's
+train.clean <- train[,(colSums(is.na(train)) == 0)]
+testing.clean <- testing[,(colSums(is.na(testing)) == 0)]
+
+## Remove non-essential data (e.g. time stamps, names etc., first 7 columns for train)
+train.clean<- train.clean[,-(1:7)]
+testing.clean<- testing.clean[,-(1:6)]
+
+## create Data Set for Model Building
+set.seed(12345)
+inTrain <- createDataPartition(y=train.clean$classe, p=0.7, list=F)
+train.clean.subset <- train.clean[inTrain, ]
+validation.clean.subset <- train.clean[-inTrain, ]
+```
+<br><br>
+
+```{fitting on train data, results = "hide", message=FALSE, warning = FALSE}
+
+## fitting model using train data, method = random forests
+fitControl <- trainControl(method="cv", number=3, verboseIter=F)
+fit <- train(classe ~ ., data=train.clean.subset, method="rf", trControl=fitControl)
+fit.train.subset<- fit$finalModel
+fit.train.subset
+```
+
+```{output for initial model, results = "hide", message=FALSE, warning = FALSE}
+##      Call:
+## randomForest(x = x, y = y, mtry = param$mtry) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 2
+
+##         OOB estimate of  error rate: 0.67%
+## Confusion matrix:
+##    A    B    C    D    E class.error
+##A 3902    2    1    1    0 0.001024066
+##B   14 2634   10    0    0 0.009029345
+##C    0   20 2375    1    0 0.008764608
+##D    0    0   35 2215    2 0.016429840
+##E    0    0    0    6 2519 0.002376238
+
+```
+<br><br> 
+
+```{predicting train, results = "hide", message=FALSE, warning = FALSE}
+predict.validations <- predict(fit, newdata=validation.clean.subset)
+predict.training<- confusionMatrix(validation.clean.subset$classe, predict.validations)
+predict.training$overall
+```
+
+<br><br> 
+
+```{output train prediction, results = "hide", message=FALSE, warning = FALSE}
+#     Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull AccuracyPValue 
+#     0.9884452      0.9853801      0.9853742      0.9910164      0.2864911      0.0000000
+```
+
+Fitting data on full data set
+```{fitting full train , results = "hide", message=FALSE, warning = FALSE}
+fitControl <- trainControl(method="cv", number=3, verboseIter=F)
+fit <- train(classe ~ ., data=train.clean, method="rf", trControl=fitControl)
+fit.train.full<- fit$finalModel
+fit.train.full
+```
+
+
+```{output full train, results = "hide", message=FALSE, warning = FALSE}
+# Call:
+#  randomForest(x = x, y = y, mtry = param$mtry) 
+#               Type of random forest: classification
+#                     Number of trees: 500
+#No. of variables tried at each split: 27
+#
+#        OOB estimate of  error rate: 0.44%
+#Confusion matrix:
+#     A    B    C    D    E  class.error
+#A 5575    3    1    0    1 0.0008960573
+#B   19 3773    4    1    0 0.0063207796
+#C    0   11 3401   10    0 0.0061367621
+#D    0    0   23 3190    3 0.0080845771
+#E    0    1    4    5 3597 0.0027723870
+```
+<br><br> 
+
+```{predicting full, results = "hide", message=FALSE, warning = FALSE}
+## predicting model using full training data set
+predict.validations.training <- predict(fit, newdata=train.clean)
+predict.training.all<- confusionMatrix(validation.clean.subset$classe, predict.validations)
+predict.training.all$overall
+```
+
+```{output predicting full train, results = "hide", message=FALSE, warning = FALSE}
+#      Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull #AccuracyPValue 
+#     0.9884452      0.9853801      0.9853742      0.9910164      0.2864911      #0.0000000 
+```
+<br><br> 
+
+Predicting Quiz
+```{predicting quiz, results = "hide", message=FALSE, warning = FALSE}
+class.project.prediction <- predict(fit, newdata=testing.clean)
+prediction.results <- data.frame(problem_id=testing.clean$problem_id,
+      predicted=class.project.prediction)
+print(prediction.results)
+```
+
+
+
+```{output predicting quiz, results = "hide", message=FALSE, warning = FALSE}
+#    problem_id predicted
+# 1           1         B
+# 2           2         A
+# 3           3         B
+# 4           4         A
+# 5           5         A
+# 6           6         E
+# 7           7         D
+# 8           8         B
+# 9           9         A
+# 10         10         A
+# 11         11         B
+# 12         12         C
+# 13         13         B
+# 14         14         A
+# 15         15         E
+# 16         16         E
+# 17         17         A
+# 18         18         B
+# 19         19         B
+# 20         20         B
+```
+<br><br> 
+
+
+## Appendix
+A. CART Model
+```{appendix 1 code , results = "hide", message=FALSE, warning = FALSE}
+model_cart <- train(classe ~ ., data=train.clean.subset,trControl=fitControl, method='rpart')
+model_cart
+```
+
+```{appendix 1 output, results = "hide", message=FALSE, warning = FALSE}
+# CART 
+# 
+# 13737 samples
+#    52 predictor
+#     5 classes: 'A', 'B', 'C', 'D', 'E' 
+# 
+# No pre-processing
+# Resampling: Cross-Validated (3 fold) 
+# Summary of sample sizes: 9157, 9159, 9158 
+# Resampling results across tuning parameters:
+# 
+#   cp          Accuracy   Kappa    
+#   0.03753433  0.5166387  0.3761371
+#   0.05987862  0.4498701  0.2653175
+#   0.11585800  0.3107723  0.0404553
+# 
+# Accuracy was used to select the optimal model using  the largest value.
+# The final value used for the model was cp = 0.03753433. 
+```
+
+B. Stochastic Gradient Boosting 
+```{appendix 2 code , results = "hide", message=FALSE, warning = FALSE}
+model_gbm <- train(classe ~ ., data=train.clean.subset,trControl=fitControl,method='gbm')
+model_gbm
+```
+
+```{appendix 2 output, results = "hide", message=FALSE, warning = FALSE}
+# Stochastic Gradient Boosting 
+# 
+# 13737 samples
+#    52 predictor
+#     5 classes: 'A', 'B', 'C', 'D', 'E' 
+# 
+# No pre-processing
+# Resampling: Cross-Validated (3 fold) 
+# Summary of sample sizes: 9159, 9157, 9158 
+# Resampling results across tuning parameters:
+# 
+#   interaction.depth  n.trees  Accuracy   Kappa    
+#   1                   50      0.7522758  0.6858878
+#   1                  100      0.8212852  0.7736615
+#   1                  150      0.8577558  0.8199343
+#   2                   50      0.8549902  0.8162241
+#   2                  100      0.9074037  0.8828054
+#   2                  150      0.9328092  0.9149739
+#   3                   50      0.8957561  0.8679864
+#   3                  100      0.9405982  0.9248242
+#   3                  150      0.9596710  0.9489738
+# 
+# Tuning parameter 'shrinkage' was held constant at a value of 0.1
+# Tuning
+#  parameter 'n.minobsinnode' was held constant at a value of 10
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were n.trees = 150, interaction.depth = 3, shrinkage
+#  = 0.1 and n.minobsinnode = 10. 
+```
+
+
+C. Random Forest Method
+```{appendix 3 code , results = "hide", message=FALSE, warning = FALSE}
+model_rf <- train(classe ~ ., data=train.clean.subset, trControl=fitControl, method='rf', ntree=100)
+model_rf
+```
+
+```{appendix 3 output, results = "hide", message=FALSE, warning = FALSE}
+# Random Forest 
+# 
+# 13737 samples
+#    52 predictor
+#     5 classes: 'A', 'B', 'C', 'D', 'E' 
+# 
+# No pre-processing
+# Resampling: Cross-Validated (3 fold) 
+# Summary of sample sizes: 9157, 9159, 9158 
+# Resampling results across tuning parameters:
+# 
+#   mtry  Accuracy   Kappa    
+#    2    0.9871151  0.9836981
+#   27    0.9881343  0.9849890
+#   52    0.9839848  0.9797408
+# 
+# Accuracy was used to select the optimal model using  the largest value.
+# The final value used for the model was mtry = 27. 
+```
+
+<br><br> 
+
+## Citations: 
+
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. 
